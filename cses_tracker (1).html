@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CSES Problem Tracker — 400 Problems</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0d1117;--bg2:#161b22;--bg3:#1c2128;--border:#30363d;
+    --text:#e6edf3;--muted:#8b949e;--accent:#58a6ff;--green:#3fb950;
+    --yellow:#d29922;--red:#f85149;--orange:#f0883e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:14px;min-height:100vh;}
+
+  /* ── header ── */
+  header{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;gap:10px;flex-wrap:wrap;}
+  .logo{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--accent);}
+  .logo span{color:var(--green);}
+  .logo small{font-size:11px;color:var(--muted);font-weight:400;margin-left:6px;}
+  .hdr{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+  .badge{font-family:'JetBrains Mono',monospace;font-size:12px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px 11px;color:var(--muted);white-space:nowrap;}
+  .badge strong{color:var(--green);}
+  .sw{position:relative;}
+  #search{background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:5px 9px 5px 28px;width:190px;outline:none;transition:border-color .2s;}
+  #search:focus{border-color:var(--accent);}
+  #search::placeholder{color:var(--muted);}
+  .si{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none;}
+  .fbtns{display:flex;gap:4px;}
+  .fb{background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:11px;font-weight:500;padding:4px 9px;transition:all .15s;}
+  .fb:hover{border-color:var(--accent);color:var(--accent);}
+  .fb.active{background:var(--accent);border-color:var(--accent);color:#0d1117;}
+  .rb{background:transparent;border:1px solid var(--border);border-radius:5px;color:var(--muted);cursor:pointer;font-size:11px;padding:4px 9px;transition:all .15s;}
+  .rb:hover{border-color:var(--red);color:var(--red);}
+
+  /* sync badge */
+  .sync-badge{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:4px 9px;cursor:pointer;transition:border-color .15s;white-space:nowrap;}
+  .sync-badge:hover{border-color:var(--accent);}
+  .sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .3s;}
+  .sync-dot.idle{background:var(--muted);}
+  .sync-dot.pending{background:var(--yellow);}
+  .sync-dot.syncing{background:var(--accent);animation:pulse .8s infinite;}
+  .sync-dot.ok{background:var(--green);}
+  .sync-dot.err{background:var(--red);}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── main ── */
+  main{padding:18px 24px;max-width:1050px;margin:0 auto;}
+  .op{background:var(--bg2);border:1px solid var(--border);border-radius:9px;padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;gap:14px;}
+  .pl{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .pbo{flex:1;background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;}
+  .pbi{height:100%;background:linear-gradient(90deg,var(--green),#56d364);border-radius:4px;transition:width .4s ease;}
+  .pc{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--green);white-space:nowrap;}
+
+  /* ── sections ── */
+  .sec{background:var(--bg2);border:1px solid var(--border);border-radius:9px;margin-bottom:10px;overflow:hidden;}
+  .sh{display:flex;align-items:center;gap:9px;padding:11px 14px;cursor:pointer;user-select:none;transition:background .15s;}
+  .sh:hover{background:var(--bg3);}
+  .cv{color:var(--muted);transition:transform .2s;font-size:13px;flex-shrink:0;}
+  .sec.open .cv{transform:rotate(90deg);}
+  .st{font-weight:600;font-size:13px;flex:1;}
+  .stag{font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 6px;border-radius:10px;border:1px solid;flex-shrink:0;}
+  .spg{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+  .sbo{width:65px;height:4px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+  .sbi{height:100%;background:var(--green);border-radius:3px;transition:width .4s ease;}
+  .scnt{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);min-width:30px;text-align:right;}
+  .pt{display:none;border-top:1px solid var(--border);}
+  .sec.open .pt{display:block;}
+  .ch{display:grid;grid-template-columns:30px 1fr 115px;border-bottom:1px solid var(--border);background:var(--bg3);padding:4px 0;}
+  .ch>div{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.06em;text-transform:uppercase;}
+  .ch>.c1{padding-left:13px;}.ch>.c2{padding-left:7px;}.ch>.c3{padding-left:4px;}
+
+  /* ── rows ── */
+  .pr{display:grid;grid-template-columns:30px 1fr 115px;align-items:start;border-bottom:1px solid var(--border);transition:background .12s;min-height:38px;}
+  .pr:last-child{border-bottom:none;}
+  .pr:hover{background:rgba(255,255,255,.02);}
+  .pr.solved{background:rgba(63,185,80,.04);}
+  .pr.hidden{display:none;}
+  .cc{display:flex;align-items:center;justify-content:center;padding:9px 0 9px 13px;}
+  .cc input[type=checkbox]{appearance:none;-webkit-appearance:none;width:15px;height:15px;border:2px solid var(--border);border-radius:4px;cursor:pointer;position:relative;transition:all .15s;background:transparent;flex-shrink:0;}
+  .cc input[type=checkbox]:checked{background:var(--green);border-color:var(--green);}
+  .cc input[type=checkbox]:checked::after{content:'';position:absolute;left:3px;top:0;width:5px;height:9px;border:2px solid #0d1117;border-top:none;border-left:none;transform:rotate(45deg);}
+  .cc input[type=checkbox]:hover{border-color:var(--green);}
+  .nc{padding:9px 7px 7px 7px;display:flex;flex-direction:column;gap:3px;}
+  .pl2{color:var(--text);text-decoration:none;font-size:12px;font-weight:500;display:flex;align-items:center;gap:5px;transition:color .15s;}
+  .pl2:hover{color:var(--accent);}
+  .pid{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);background:var(--bg3);padding:1px 4px;border-radius:3px;border:1px solid var(--border);white-space:nowrap;flex-shrink:0;}
+  .pid.nw{color:var(--orange);border-color:rgba(240,136,62,.35);background:rgba(240,136,62,.08);}
+  .pli{font-size:10px;color:var(--muted);opacity:0;transition:opacity .15s;}
+  .pl2:hover .pli{opacity:1;}
+  .pr.solved .pl2{color:var(--muted);text-decoration:line-through;}
+  .ntc{padding:5px 9px 5px 3px;}
+  .ni{width:100%;min-height:26px;max-height:80px;background:transparent;border:1px solid transparent;border-radius:4px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.5;resize:none;outline:none;padding:2px 5px;transition:border-color .15s,background .15s;overflow:hidden;}
+  .ni:focus{border-color:var(--border);background:var(--bg3);color:var(--text);}
+  .ni::placeholder{color:#444c56;}
+  .ni:not(:placeholder-shown){color:var(--yellow);}
+  .em{padding:24px;text-align:center;color:var(--muted);font-size:13px;display:none;}
+  .em.show{display:block;}
+  .footer{text-align:center;color:#444c56;font-size:11px;margin-top:14px;font-family:'JetBrains Mono',monospace;}
+  .footer span{color:var(--orange);}
+
+  /* ── setup / settings modal ── */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .overlay.hidden{display:none;}
+  .modal{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:28px;max-width:480px;width:100%;}
+  .modal h2{font-size:16px;font-weight:600;margin-bottom:6px;}
+  .modal p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px;}
+  .modal p a{color:var(--accent);text-decoration:none;}
+  .modal p a:hover{text-decoration:underline;}
+  .modal label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px;font-weight:500;}
+  .modal input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:8px 10px;outline:none;transition:border-color .2s;margin-bottom:14px;}
+  .modal input:focus{border-color:var(--accent);}
+  .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px;}
+  .btn-primary{background:var(--accent);border:none;border-radius:6px;color:#0d1117;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;padding:7px 18px;transition:opacity .15s;}
+  .btn-primary:hover{opacity:.85;}
+  .btn-primary:disabled{opacity:.45;cursor:default;}
+  .btn-sec{background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);cursor:pointer;font-size:13px;padding:7px 14px;transition:all .15s;}
+  .btn-sec:hover{border-color:var(--muted);color:var(--text);}
+  .modal-err{font-size:12px;color:var(--red);margin-top:-8px;margin-bottom:10px;display:none;}
+  .modal-err.show{display:block;}
+  .steps{counter-reset:step;list-style:none;margin-bottom:18px;}
+  .steps li{counter-increment:step;font-size:13px;color:var(--muted);line-height:1.7;padding-left:22px;position:relative;}
+  .steps li::before{content:counter(step)'.';position:absolute;left:0;color:var(--accent);font-weight:600;}
+  .steps li a{color:var(--accent);text-decoration:none;}
+  .steps li a:hover{text-decoration:underline;}
+  .modal-section{margin-bottom:18px;}
+  .modal-section:last-child{margin-bottom:0;}
+  .modal-sep{border:none;border-top:1px solid var(--border);margin:16px 0;}
+  .bin-id-display{font-family:'JetBrains Mono',monospace;font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--green);word-break:break-all;margin-bottom:14px;}
+  .danger-zone{border:1px solid rgba(248,81,73,.3);border-radius:7px;padding:12px 14px;background:rgba(248,81,73,.05);}
+  .danger-zone p{color:rgba(248,81,73,.8);font-size:12px;margin-bottom:10px;}
+  .btn-danger{background:transparent;border:1px solid var(--red);border-radius:6px;color:var(--red);cursor:pointer;font-size:12px;padding:5px 12px;transition:all .15s;}
+  .btn-danger:hover{background:var(--red);color:#0d1117;}
+</style>
+</head>
+<body>
+
+<!-- Setup Modal -->
+<div class="overlay" id="setupOverlay">
+  <div class="modal">
+    <h2>☁ Connect JSONbin.io</h2>
+    <p>Your progress will be saved to a free cloud bin — accessible from any browser or device.</p>
+    <ol class="steps">
+      <li>Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and create a free account</li>
+      <li>In your dashboard, go to <strong style="color:var(--text)">API Keys</strong> → copy your <strong style="color:var(--text)">Master Key</strong></li>
+      <li>Paste it below — a bin will be created automatically for you</li>
+    </ol>
+    <label>Master Key</label>
+    <input type="password" id="setupKey" placeholder="$2a$10$…" autocomplete="off">
+    <div class="modal-err" id="setupErr"></div>
+    <div class="modal-btns">
+      <button class="btn-primary" id="setupBtn" onclick="doSetup()">Connect & Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div class="overlay hidden" id="settingsOverlay">
+  <div class="modal">
+    <h2>⚙ Cloud Sync Settings</h2>
+    <hr class="modal-sep">
+    <div class="modal-section">
+      <label>Current Bin ID</label>
+      <div class="bin-id-display" id="binIdDisplay">—</div>
+      <label>Master Key (stored locally)</label>
+      <input type="password" id="newKey" placeholder="Change key (leave blank to keep)" autocomplete="off">
+    </div>
+    <div class="modal-err" id="settingsErr"></div>
+    <hr class="modal-sep">
+    <div class="danger-zone">
+      <p>⚠ Danger zone — these actions cannot be undone</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-danger" onclick="clearAllData()">Clear all progress</button>
+        <button class="btn-danger" onclick="disconnectBin()">Disconnect bin</button>
+      </div>
+    </div>
+    <hr class="modal-sep">
+    <div class="modal-btns">
+      <button class="btn-sec" onclick="closeSettings()">Cancel</button>
+      <button class="btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">CSES<span>.</span>tracker<small>400 problems</small></div>
+  <div class="hdr">
+    <div class="badge">Solved: <strong id="ts">0</strong> / <span id="tc">0</span></div>
+    <div class="sw"><span class="si">⌕</span><input type="text" id="search" placeholder="search problem…" autocomplete="off"></div>
+    <div class="fbtns">
+      <button class="fb active" data-filter="all">All</button>
+      <button class="fb" data-filter="unsolved">Unsolved</button>
+      <button class="fb" data-filter="solved">Solved</button>
+    </div>
+    <div class="sync-badge" id="syncBadge" onclick="openSettings()" title="Cloud sync status — click to manage">
+      <div class="sync-dot idle" id="syncDot"></div>
+      <span id="syncLabel">not connected</span>
+    </div>
+    <button class="rb" onclick="resetAll()">↺ Reset</button>
+  </div>
+</header>
+
+<main>
+  <div class="op">
+    <span class="pl">Overall progress</span>
+    <div class="pbo"><div class="pbi" id="ob" style="width:0%"></div></div>
+    <span class="pc" id="op2">0%</span>
+  </div>
+  <div id="sc"></div>
+  <div class="em" id="em">No problems match your search/filter.</div>
+  <div class="footer">★ Problems marked <span>NEW</span> were added in the 2025 CSES expansion — they link to the problem list; search by name to find them.</div>
+</main>
+
+<script>
+/* ─────────── Problem Data ─────────── */
+const P=[
+  {s:"Introductory Problems",t:"intro",c:"#58a6ff",p:[
+    [1068,"Weird Algorithm"],[1083,"Missing Number"],[1069,"Repetitions"],
+    [1094,"Increasing Array"],[1070,"Permutations"],[1071,"Number Spiral"],
+    [1072,"Two Knights"],[1092,"Two Sets"],[1617,"Bit Strings"],[1618,"Trailing Zeros"],
+    [1754,"Coin Piles"],[1755,"Palindrome Reorder"],[2205,"Gray Code"],[2165,"Tower of Hanoi"],
+    [1622,"Creating Strings"],[1623,"Apple Division"],[1624,"Chessboard and Queens"],
+    [null,"Raab Game I"],[null,"Mex Grid Construction"],[null,"Knight Moves Grid"],
+    [null,"Grid Coloring I"],[2431,"Digit Queries"],[1743,"String Reorder"],[1625,"Grid Paths"]
+  ]},
+  {s:"Sorting and Searching",t:"sort",c:"#bc8cff",p:[
+    [1621,"Distinct Numbers"],[1084,"Apartments"],[1090,"Ferris Wheel"],[1091,"Concert Tickets"],
+    [1619,"Restaurant Customers"],[1629,"Movie Festival"],[1640,"Sum of Two Values"],
+    [1643,"Maximum Subarray Sum"],[1074,"Stick Lengths"],[2183,"Missing Coin Sum"],
+    [2216,"Collecting Numbers"],[2217,"Collecting Numbers II"],[1141,"Playlist"],
+    [1073,"Towers"],[1163,"Traffic Lights"],[2162,"Josephus Problem I"],
+    [2163,"Josephus Problem II"],[2168,"Nested Ranges Check"],[2169,"Nested Ranges Count"],
+    [1164,"Room Allocation"],[1620,"Factory Machines"],[1630,"Tasks and Deadlines"],
+    [1631,"Reading Books"],[1641,"Sum of Three Values"],[1642,"Sum of Four Values"],
+    [1645,"Nearest Smaller Values"],[1660,"Subarray Sums I"],[1661,"Subarray Sums II"],
+    [1662,"Subarray Divisibility"],[2428,"Subarray Distinct Values"],[1085,"Array Division"],
+    [1632,"Movie Festival II"],[1644,"Maximum Subarray Sum II"],
+    [null,"New Sorting Problem A"],[null,"New Sorting Problem B"]
+  ]},
+  {s:"Dynamic Programming",t:"dp",c:"#3fb950",p:[
+    [1633,"Dice Combinations"],[1634,"Minimizing Coins"],[1635,"Coin Combinations I"],
+    [1636,"Coin Combinations II"],[1637,"Removing Digits"],[1638,"Grid Paths"],
+    [1158,"Book Shop"],[1746,"Array Description"],[2413,"Counting Towers"],
+    [1639,"Edit Distance"],[1744,"Rectangle Cutting"],[1745,"Money Sums"],
+    [1097,"Removal Game"],[1093,"Two Sets II"],[1145,"Increasing Subsequence"],
+    [1140,"Projects"],[1653,"Elevator Rides"],[2181,"Counting Tilings"],
+    [2220,"Counting Numbers"],[null,"New DP Problem A"],[null,"New DP Problem B"],
+    [null,"New DP Problem C"],[null,"New DP Problem D"]
+  ]},
+  {s:"Graph Algorithms",t:"graph",c:"#f0883e",p:[
+    [1192,"Counting Rooms"],[1193,"Labyrinth"],[1666,"Building Roads"],[1667,"Message Route"],
+    [1668,"Building Teams"],[1669,"Round Trip"],[1194,"Monsters"],[1671,"Shortest Routes I"],
+    [1672,"Shortest Routes II"],[1673,"High Score"],[1195,"Flight Discount"],
+    [1197,"Cycle Finding"],[1196,"Flight Routes"],[1678,"Round Trip II"],
+    [1679,"Course Schedule"],[1680,"Longest Flight Route"],[1681,"Game Routes"],
+    [1202,"Investigation"],[1750,"Planets Queries I"],[1160,"Planets Queries II"],
+    [1751,"Planets Cycles"],[1675,"Road Reparation"],[1676,"Road Construction"],
+    [1682,"Flight Routes Check"],[1683,"Planets and Kingdoms"],[1684,"Giant Pizza"],
+    [1686,"Coin Collector"],[1691,"Mail Delivery"],[1692,"De Bruijn Sequence"],
+    [1693,"Teleporters Path"],[1690,"Hamiltonian Flights"],[1689,"Knight's Tour"],
+    [1694,"Download Speed"],[1695,"Police Chase"],[1696,"School Dance"],[1711,"Distinct Routes"]
+  ]},
+  {s:"Range Queries",t:"range",c:"#d29922",p:[
+    [1646,"Static Range Sum Queries"],[1647,"Static Range Minimum Queries"],
+    [1648,"Dynamic Range Sum Queries"],[1649,"Dynamic Range Minimum Queries"],
+    [1650,"Range Xor Queries"],[1651,"Range Update Queries"],[1652,"Forest Queries"],
+    [1143,"Hotel Queries"],[1749,"List Removals"],[1144,"Salary Queries"],
+    [2166,"Prefix Sum Queries"],[2206,"Pizzeria Queries"],[1190,"Subarray Sum Queries"],
+    [1734,"Distinct Values Queries"],[2416,"Increasing Array Queries"],[1739,"Forest Queries II"],
+    [1735,"Range Updates and Sums"],[1736,"Polynomial Queries"],[1737,"Range Queries and Copies"],
+    [null,"New Range Problem A"],[null,"New Range Problem B"],[null,"New Range Problem C"],
+    [null,"New Range Problem D"],[null,"New Range Problem E"],[null,"New Range Problem F"]
+  ]},
+  {s:"Tree Algorithms",t:"tree",c:"#56d364",p:[
+    [1674,"Subordinates"],[1130,"Tree Matching"],[1131,"Tree Diameter"],
+    [1132,"Tree Distances I"],[1133,"Tree Distances II"],[1687,"Company Queries I"],
+    [1688,"Company Queries II"],[1135,"Distance Queries"],[1136,"Counting Paths"],
+    [1137,"Subtree Queries"],[1138,"Path Queries"],[2134,"Path Queries II"],
+    [1139,"Distinct Colors"],[2079,"Finding a Centroid"],[2080,"Fixed-Length Paths I"],
+    [2081,"Fixed-Length Paths II"]
+  ]},
+  {s:"Mathematics",t:"math",c:"#ff7b72",p:[
+    [2164,"Josephus Queries"],[1095,"Exponentiation"],[1712,"Exponentiation II"],
+    [1713,"Counting Divisors"],[1081,"Common Divisors"],[1082,"Sum of Divisors"],
+    [2182,"Divisor Analysis"],[2185,"Prime Multiples"],[2417,"Counting Coprime Pairs"],
+    [1079,"Binomial Coefficients"],[1715,"Creating Strings II"],[1716,"Distributing Apples"],
+    [1717,"Christmas Party"],[2064,"Bracket Sequences I"],[2187,"Bracket Sequences II"],
+    [2209,"Counting Necklaces"],[2210,"Counting Grids"],[1722,"Fibonacci Numbers"],
+    [1096,"Throwing Dice"],[1723,"Graph Paths I"],[1724,"Graph Paths II"],
+    [1725,"Dice Probability"],[1726,"Moving Robots"],[1727,"Candy Lottery"],
+    [1728,"Inversion Probability"],[1729,"Stick Game"],[1730,"Nim Game I"],
+    [1098,"Nim Game II"],[1099,"Stair Game"],[2207,"Grundy's Game"],[2208,"Another Game"],
+    [null,"New Math Problem A"],[null,"New Math Problem B"],[null,"New Math Problem C"],
+    [null,"New Math Problem D"],[null,"New Math Problem E"],[null,"New Math Problem F"]
+  ]},
+  {s:"String Algorithms",t:"strings",c:"#79c0ff",p:[
+    [1731,"Word Combinations"],[1753,"String Matching"],[1732,"Finding Borders"],
+    [1733,"Finding Periods"],[1110,"Minimal Rotation"],[1111,"Longest Palindrome"],
+    [1112,"Required Substring"],[2420,"Palindrome Queries"],[2102,"Finding Patterns"],
+    [2103,"Counting Patterns"],[2104,"Pattern Positions"],[2105,"Distinct Substrings"],
+    [2106,"Repeating Substring"],[2107,"String Functions"],[2108,"Substring Order I"],
+    [2109,"Substring Order II"],[2110,"Substring Distribution"],
+    [null,"New String Problem A"],[null,"New String Problem B"],
+    [null,"New String Problem C"],[null,"New String Problem D"]
+  ]},
+  {s:"Geometry",t:"geo",c:"#e3b341",p:[
+    [2189,"Point Location Test"],[2190,"Line Segment Intersection"],[2191,"Polygon Area"],
+    [2192,"Point in Polygon"],[2193,"Polygon Lattice Points"],[2194,"Minimum Euclidean Distance"],
+    [2195,"Convex Hull"],
+    [null,"New Geometry Problem A"],[null,"New Geometry Problem B"],
+    [null,"New Geometry Problem C"],[null,"New Geometry Problem D"],
+    [null,"New Geometry Problem E"],[null,"New Geometry Problem F"],
+    [null,"New Geometry Problem G"],[null,"New Geometry Problem H"],
+    [null,"New Geometry Problem I"]
+  ]},
+  {s:"Advanced Techniques",t:"adv",c:"#d2a8ff",p:[
+    [1628,"Meet in the Middle"],[2136,"Hamming Distance"],[2137,"Beautiful Subgrids"],
+    [2138,"Reachable Nodes"],[2143,"Reachability Queries"],[2072,"Cut and Paste"],
+    [2073,"Substring Reversals"],[2074,"Reversals and Sums"],[2076,"Necessary Roads"],
+    [2077,"Necessary Cities"],[2078,"Eulerian Subgraphs"],[2084,"Monster Game I"],
+    [2085,"Monster Game II"],[2086,"Subarray Squares"],[2087,"Houses and Schools"],
+    [2088,"Knuth Division"],[2111,"Apples and Bananas"],[2112,"One Bit Positions"],
+    [2113,"Signal Processing"],[2101,"New Roads Queries"],[2133,"Dynamic Connectivity"],
+    [2121,"Parcel Delivery"],[2129,"Task Assignment"],[2130,"Distinct Routes II"],
+    [null,"New Advanced Techniques Problem"]
+  ]},
+  {s:"Sliding Window Problems",t:"slide",c:"#39d353",p:[
+    [3220,"Sliding Window Sum"],[3221,"Sliding Window Minimum"],[3426,"Sliding Window Xor"],
+    [3405,"Sliding Window Or"],[3222,"Sliding Window Distinct Values"],
+    [3224,"Sliding Window Mode"],[3219,"Sliding Window Mex"],
+    [1076,"Sliding Window Median"],[1077,"Sliding Window Cost"],
+    [3223,"Sliding Window Inversions"],[3227,"Sliding Window Advertisement"]
+  ]},
+  {s:"Interactive Problems",t:"interact",c:"#58a6ff",p:[
+    [3112,"Hidden Integer"],[3139,"Hidden Permutation"],[3305,"K-th Highest Score"],
+    [3228,"Permuted Binary Strings"],[null,"Colored Chairs"],[3140,"Inversion Sorting"]
+  ]},
+  {s:"Bitwise Operations",t:"bits",c:"#ffa657",p:[
+    [1146,"Counting Bits"],[1655,"Maximum Xor Subarray"],[null,"Maximum Xor Subset"],
+    [null,"Number of Subset Xors"],[null,"K Subset Xors"],[null,"All Subarray Xors"],
+    [null,"Xor Pyramid Peak"],[null,"Xor Pyramid Diagonal"],[null,"Xor Pyramid Row"],
+    [null,"SOS Bit Problem"],[null,"And Subset Count"]
+  ]},
+  {s:"Construction Problems",t:"construct",c:"#ff6e6e",p:[
+    [2214,"Inverse Inversions"],[2215,"Monotone Subsequences"],[null,"Third Permutation"],
+    [null,"Permutation Prime Sums"],[1697,"Chess Tournament"],
+    [null,"Distinct Sums Grid"],[2423,"Filling Trominos"],[2418,"Grid Path Construction"]
+  ]},
+  {s:"Advanced Graph Problems",t:"advgraph",c:"#85e89d",p:[
+    [null,"Nearest Shops"],[1134,"Prüfer Code"],[1702,"Tree Traversals"],
+    [1757,"Course Schedule II"],[1756,"Acyclic Graph Edges"],[2177,"Strongly Connected Edges"],
+    [2179,"Even Outdegree Edges"],[1707,"Graph Girth"],[null,"Fixed Length Walk Queries"],
+    [null,"Transfer Speeds Sum"],[null,"MST Edge Check"],[null,"MST Edge Set Check"],
+    [null,"MST Edge Cost"],[1677,"Network Breakdown"],[null,"Tree Coin Collecting I"],
+    [null,"Tree Coin Collecting II"],[1700,"Tree Isomorphism I"],[1701,"Tree Isomorphism II"],
+    [1699,"Flight Route Requests"],[1703,"Critical Cities"],[1203,"Visiting Cities"],
+    [null,"Graph Coloring"],[null,"Bus Companies"],[null,"Split into Two Paths"],
+    [1704,"Network Renovation"],[1705,"Forbidden Cities"],[1752,"Creating Offices"],
+    [1685,"New Flight Routes"]
+  ]},
+  {s:"Counting Problems",t:"count",c:"#c9d1d9",p:[
+    [null,"Filled Subgrid Count I"],[null,"Filled Subgrid Count II"],
+    [null,"All Letter Subgrid Count I"],[null,"All Letter Subgrid Count II"],
+    [null,"Border Subgrid Count I"],[null,"Border Subgrid Count II"],
+    [null,"Raab Game II"],[1080,"Empty String"],[2229,"Permutation Inversions"],
+    [2176,"Counting Bishops"],[2228,"Counting Sequences"],[null,"Grid Paths II"],
+    [null,"Counting Permutations"],[2429,"Grid Completion"],[2421,"Counting Reorders"],
+    [null,"Tournament Graph Distribution"],[null,"Collecting Numbers Distribution"],
+    [2415,"Functional Graph Distribution"]
+  ]},
+  {s:"Additional Problems I",t:"extra1",c:"#8b949e",p:[
+    [1087,"Shortest Subsequence"],[null,"Distinct Values Sum"],[null,"Distinct Values Splits"],
+    [1670,"Swap Game"],[null,"Beautiful Permutation II"],[2422,"Multiplication Table"],
+    [null,"Bubble Sort Rounds I"],[null,"Bubble Sort Rounds II"],
+    [null,"Nearest Campsites I"],[null,"Nearest Campsites II"],
+    [1142,"Advertisement"],[2186,"Special Substrings"],
+    [null,"Counting LCM Arrays"],[null,"Square Subsets"],[null,"Subarray Sum Constraints"],
+    [null,"Water Containers Moves"],[null,"Permutation Subsequence"],
+    [1188,"Bit Inversions"],[1086,"Writing Numbers"],[2427,"Letter Pair Move Game"],
+    [1147,"Maximum Building I"],[1162,"Sorting Methods"],[1191,"Cyclic Array"],
+    [2414,"List of Sums"],[2184,"Missing Coin Sum Queries"],[1157,"Number Grid"],
+    [1664,"Movie Festival Queries"],[null,"New Additional I Problem A"],
+    [null,"New Additional I Problem B"],[null,"New Additional I Problem C"]
+  ]},
+  {s:"Additional Problems II",t:"extra2",c:"#6e7681",p:[
+    [null,"Bouncing Ball Steps"],[null,"Bouncing Ball Cycle"],[null,"Knight Moves Queries"],
+    [null,"K Subset Sums I"],[null,"K Subset Sums II"],[2132,"Increasing Array II"],
+    [1189,"Food Division"],[1698,"Swap Round Sorting"],[2430,"Binary Subsequences"],
+    [1706,"School Excursion"],[1709,"Coin Grid"],[null,"Grid Coloring II"],
+    [2426,"Programmers and Artists"],[2174,"Removing Digits II"],[2180,"Coin Arrangement"],
+    [null,"Replace with Difference"],[2432,"Grid Puzzle I"],[2131,"Grid Puzzle II"],
+    [2115,"Bit Substrings"],[2075,"Reversal Sorting"],[1159,"Book Shop II"],
+    [null,"GCD Subsets"],[null,"Minimum Cost Pairs"],[null,"Same Sum Subsets"],
+    [null,"Mex Grid Queries"],[1148,"Maximum Building II"],[1161,"Stick Divisions"],
+    [null,"Stick Difference"],[1665,"Coding Company"],[2402,"Two Stacks Sorting"]
+  ]}
+];
+
+/* ─────────── Storage helpers ─────────── */
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch {} },
+  del: k => { try { localStorage.removeItem(k) } catch {} }
+};
+
+/* ─────────── State ─────────── */
+let solved = {};
+let notes  = {};
+let filter = 'all';
+let syncTimer = null;
+const JBIN_API = 'https://api.jsonbin.io/v3';
+
+const getKey   = () => LS.get('cses_jkey') || '';
+const getBinId = () => LS.get('cses_jbin') || '';
+const key      = (id, name) => id ? String(id) : 'x_' + name.replace(/\W+/g, '_');
+
+/* ─────────── Sync status UI ─────────── */
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('syncDot');
+  const lbl = document.getElementById('syncLabel');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+/* ─────────── JSONbin.io API ─────────── */
+async function jbinCreate(apiKey, data) {
+  const r = await fetch(`${JBIN_API}/b`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': apiKey,
+      'X-Bin-Name': 'cses-tracker',
+      'X-Bin-Private': 'true'
+    },
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(`Create failed: ${r.status}`);
+  const j = await r.json();
+  return j.metadata.id;
+}
+
+async function jbinRead(apiKey, binId) {
+  const r = await fetch(`${JBIN_API}/b/${binId}/latest`, {
+    headers: { 'X-Master-Key': apiKey }
+  });
+  if (!r.ok) throw new Error(`Read failed: ${r.status}`);
+  const j = await r.json();
+  return j.record;
+}
+
+async function jbinWrite(apiKey, binId, data) {
+  const r = await fetch(`${JBIN_API}/b/${binId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': apiKey
+    },
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(`Write failed: ${r.status}`);
+}
+
+/* ─────────── Setup flow ─────────── */
+async function doSetup() {
+  const keyVal = document.getElementById('setupKey').value.trim();
+  const errEl  = document.getElementById('setupErr');
+  const btn    = document.getElementById('setupBtn');
+  errEl.classList.remove('show');
+  if (!keyVal) { showErr(errEl, 'Please enter your Master Key.'); return; }
+  btn.disabled = true; btn.textContent = 'Connecting…';
+  try {
+    const binId = await jbinCreate(keyVal, { solved: {}, notes: {} });
+    LS.set('cses_jkey', keyVal);
+    LS.set('cses_jbin', binId);
+    document.getElementById('setupOverlay').classList.add('hidden');
+    setSyncStatus('ok', 'synced');
+    build(); applyFilter();
+  } catch(e) {
+    showErr(errEl, 'Could not connect. Check your Master Key and try again.');
+  }
+  btn.disabled = false; btn.textContent = 'Connect & Save';
+}
+
+/* ─────────── Cloud read/write ─────────── */
+async function cloudLoad() {
+  const apiKey = getKey(); const binId = getBinId();
+  if (!apiKey || !binId) return;
+  setSyncStatus('syncing', 'loading…');
+  try {
+    const data = await jbinRead(apiKey, binId);
+    solved = data.solved || {};
+    notes  = data.notes  || {};
+    LS.set('cses2_solved', solved);
+    LS.set('cses2_notes',  notes);
+    setSyncStatus('ok', 'synced');
+    build(); applyFilter();
+  } catch(e) {
+    // fall back to localStorage cache
+    solved = LS.get('cses2_solved') || {};
+    notes  = LS.get('cses2_notes')  || {};
+    setSyncStatus('err', 'offline – local cache');
+    build(); applyFilter();
+  }
+}
+
+function scheduleSave() {
+  setSyncStatus('pending', 'unsaved…');
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(cloudSave, 2500);
+}
+
+async function cloudSave() {
+  const apiKey = getKey(); const binId = getBinId();
+  if (!apiKey || !binId) return;
+  setSyncStatus('syncing', 'saving…');
+  // always persist to localStorage instantly as cache
+  LS.set('cses2_solved', solved);
+  LS.set('cses2_notes',  notes);
+  try {
+    await jbinWrite(apiKey, binId, { solved, notes });
+    setSyncStatus('ok', 'synced');
+  } catch(e) {
+    setSyncStatus('err', 'sync failed');
+  }
+}
+
+/* ─────────── UI helpers ─────────── */
+function showErr(el, msg) { el.textContent = msg; el.classList.add('show'); }
+
+function total() {
+  let t=0,s=0;
+  P.forEach(sec=>sec.p.forEach(p=>{t++;if(solved[key(p[0],p[1])])s++;}));
+  return {t,s};
+}
+function secStats(sec) {
+  let s=0; sec.p.forEach(p=>{if(solved[key(p[0],p[1])])s++;});
+  return {t:sec.p.length,s};
+}
+function updateOverall() {
+  const {t,s}=total();
+  document.getElementById('ts').textContent=s;
+  document.getElementById('tc').textContent=t;
+  const pct=t?Math.round(s/t*100):0;
+  document.getElementById('ob').style.width=pct+'%';
+  document.getElementById('op2').textContent=pct+'%';
+}
+function updateSecBar(si) {
+  const {t,s}=secStats(P[si]);
+  const bar=document.querySelector(`[data-sb="${si}"]`);
+  const cnt=document.querySelector(`[data-sc="${si}"]`);
+  if(bar) bar.style.width=(t?Math.round(s/t*100):0)+'%';
+  if(cnt) cnt.textContent=s+'/'+t;
+}
+function applyFilter() {
+  let any=false;
+  document.querySelectorAll('.pr').forEach(row=>{
+    const k=row.dataset.key, name=row.dataset.name, id=row.dataset.id;
+    const q=document.getElementById('search').value.toLowerCase();
+    const ms=!q||name.includes(q)||(id&&id.includes(q));
+    const isSolved=!!solved[k];
+    const mf=filter==='all'||(filter==='solved'&&isSolved)||(filter==='unsolved'&&!isSolved);
+    const v=ms&&mf;
+    row.classList.toggle('hidden',!v);
+    if(v) any=true;
+  });
+  document.getElementById('em').classList.toggle('show',!any);
+}
+
+function build() {
+  const sc=document.getElementById('sc');
+  sc.innerHTML='';
+  P.forEach((sec,si)=>{
+    const {t,s}=secStats(sec);
+    const d=document.createElement('div');
+    d.className='sec open';
+    d.innerHTML=`
+      <div class="sh" onclick="this.parentElement.classList.toggle('open')">
+        <span class="cv">▶</span>
+        <span class="st">${sec.s}</span>
+        <span class="stag" style="color:${sec.c};border-color:${sec.c}40;background:${sec.c}10">${sec.t}</span>
+        <div class="spg">
+          <div class="sbo"><div class="sbi" data-sb="${si}" style="width:${t?Math.round(s/t*100):0}%"></div></div>
+          <span class="scnt" data-sc="${si}">${s}/${t}</span>
+        </div>
+      </div>
+      <div class="pt">
+        <div class="ch"><div class="c1"></div><div class="c2">Problem</div><div class="c3">Notes</div></div>
+        ${sec.p.map(([id,name])=>{
+          const k=key(id,name);
+          const href=id?`https://cses.fi/problemset/task/${id}`:`https://cses.fi/problemset/list/`;
+          const isNew=!id, sv=!!solved[k];
+          const nt=(notes[k]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          return `<div class="pr${sv?' solved':''}" data-key="${k}" data-id="${id||''}" data-name="${name.toLowerCase()}" data-si="${si}">
+            <div class="cc"><input type="checkbox"${sv?' checked':''} onchange="toggle('${k}',this,${si})"></div>
+            <div class="nc"><a class="pl2" href="${href}" target="_blank" rel="noopener"><span class="pid${isNew?' nw':''}">${isNew?'NEW':'#'+id}</span>${name}<span class="pli">↗</span></a></div>
+            <div class="ntc"><textarea class="ni" rows="1" placeholder="note…" oninput="noteChange('${k}',this)" onfocus="ar(this)" onblur="sr(this)">${nt}</textarea></div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    sc.appendChild(d);
+  });
+  updateOverall();
+}
+
+function toggle(k, cb, si) {
+  solved[k]=cb.checked;
+  cb.closest('.pr').classList.toggle('solved',cb.checked);
+  updateSecBar(si); updateOverall(); applyFilter();
+  scheduleSave();
+}
+function noteChange(k, ta) {
+  notes[k]=ta.value;
+  ar(ta);
+  scheduleSave();
+}
+function ar(ta){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,80)+'px';}
+function sr(ta){if(!ta.value)ta.style.height='';}
+
+function resetAll() {
+  if(!confirm('Reset ALL solved marks and notes? This cannot be undone.')) return;
+  solved={}; notes={};
+  scheduleSave();
+  build(); applyFilter();
+}
+
+/* ─────────── Settings modal ─────────── */
+function openSettings() {
+  document.getElementById('binIdDisplay').textContent = getBinId() || '(none)';
+  document.getElementById('newKey').value = '';
+  document.getElementById('settingsErr').classList.remove('show');
+  document.getElementById('settingsOverlay').classList.remove('hidden');
+}
+function closeSettings() {
+  document.getElementById('settingsOverlay').classList.add('hidden');
+}
+async function saveSettings() {
+  const newKey = document.getElementById('newKey').value.trim();
+  const errEl  = document.getElementById('settingsErr');
+  errEl.classList.remove('show');
+  if (newKey) {
+    // validate new key by trying a read
+    const binId = getBinId();
+    if (!binId) { showErr(errEl,'No bin connected. Disconnect and reconnect.'); return; }
+    try {
+      await jbinRead(newKey, binId);
+      LS.set('cses_jkey', newKey);
+    } catch(e) {
+      showErr(errEl,'New key invalid or does not have access to this bin.');
+      return;
+    }
+  }
+  closeSettings();
+  setSyncStatus('ok','synced');
+}
+function disconnectBin() {
+  if(!confirm('Disconnect the cloud bin? Your local progress stays, but cloud sync will be disabled until you reconnect.')) return;
+  LS.del('cses_jkey'); LS.del('cses_jbin');
+  closeSettings();
+  setSyncStatus('idle','not connected');
+  document.getElementById('setupOverlay').classList.remove('hidden');
+}
+function clearAllData() {
+  if(!confirm('Clear ALL solved marks and notes from both local and cloud? This cannot be undone.')) return;
+  solved={}; notes={};
+  closeSettings();
+  scheduleSave();
+  build(); applyFilter();
+}
+
+/* ─────────── Boot ─────────── */
+document.getElementById('search').addEventListener('input', applyFilter);
+document.querySelectorAll('.fb').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.fb').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active'); filter=b.dataset.filter; applyFilter();
+  });
+});
+
+// Enter key in setup modal
+document.getElementById('setupKey').addEventListener('keydown', e => {
+  if(e.key==='Enter') doSetup();
+});
+
+if (getKey() && getBinId()) {
+  // Connected: load from local cache first for instant render, then fetch cloud
+  solved = LS.get('cses2_solved') || {};
+  notes  = LS.get('cses2_notes')  || {};
+  build(); applyFilter();
+  setSyncStatus('syncing','loading…');
+  cloudLoad();
+} else {
+  // Not connected: show setup modal
+  build(); applyFilter();
+  setSyncStatus('idle','not connected');
+  document.getElementById('setupOverlay').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
