@@ -738,23 +738,27 @@ document.getElementById('setupKey').addEventListener('keydown', e => { if(e.key=
 document.getElementById('reconnectKey').addEventListener('keydown', e => { if(e.key==='Enter') doReconnect(); });
 document.getElementById('reconnectBin').addEventListener('keydown', e => { if(e.key==='Enter') doReconnect(); });
 
-if (getKey() && getBinId()) {
-  // Fully connected — load from local cache instantly, then sync from cloud
+// Boot logic: robust credential detection
+const keyExists = !!LS.get('cses_jkey');
+const binExists = !!LS.get('cses_jbin');
+
+if (keyExists && binExists) {
+  // Fully connected — normal operation
   solved = LS.get('cses2_solved') || {};
   notes  = LS.get('cses2_notes')  || {};
   build(); applyFilter();
   setSyncStatus('syncing','loading…');
   cloudLoad();
 } else {
-  // Not connected — show setup modal
+  // Not connected or missing credential(s)
   build(); applyFilter();
   setSyncStatus('idle','not connected');
   const overlay = document.getElementById('setupOverlay');
   overlay.classList.remove('hidden');
-  // If we have a partial credential (e.g. after browser storage cleared),
-  // skip to the reconnect panel so user doesn't accidentally create a new bin
-  if (LS.get('cses_jbin') || LS.get('cses_jkey')) {
+  if (keyExists || binExists) {
     showReconnect();
+  } else {
+    showNew();
   }
 }
 </script>
