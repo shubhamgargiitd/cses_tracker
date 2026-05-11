@@ -462,24 +462,68 @@ async function jbinWrite(apiKey, binId, data) {
 }
 
 /* ─────────── Setup flow ─────────── */
+function showReconnect() {
+  document.getElementById('setupNew').style.display = 'none';
+  document.getElementById('setupReconnect').style.display = 'block';
+  document.getElementById('setupSuccess').style.display = 'none';
+  // pre-fill if we have stored values
+  const storedKey = LS.get('cses_jkey');
+  const storedBin = LS.get('cses_jbin');
+  if (storedKey) document.getElementById('reconnectKey').value = storedKey;
+  if (storedBin) document.getElementById('reconnectBin').value = storedBin;
+}
+function showNew() {
+  document.getElementById('setupNew').style.display = 'block';
+  document.getElementById('setupReconnect').style.display = 'none';
+  document.getElementById('setupSuccess').style.display = 'none';
+}
+function closeSetupSuccess() {
+  document.getElementById('setupOverlay').classList.add('hidden');
+  setSyncStatus('ok', 'synced');
+  cloudLoad();
+}
+
 async function doSetup() {
   const keyVal = document.getElementById('setupKey').value.trim();
   const errEl  = document.getElementById('setupErr');
   const btn    = document.getElementById('setupBtn');
   errEl.classList.remove('show');
   if (!keyVal) { showErr(errEl, 'Please enter your Master Key.'); return; }
-  btn.disabled = true; btn.textContent = 'Connecting…';
+  btn.disabled = true; btn.textContent = 'Creating bin…';
   try {
     const binId = await jbinCreate(keyVal, { solved: {}, notes: {} });
     LS.set('cses_jkey', keyVal);
     LS.set('cses_jbin', binId);
-    document.getElementById('setupOverlay').classList.add('hidden');
-    setSyncStatus('ok', 'synced');
-    build(); applyFilter();
+    // show success with bin ID
+    document.getElementById('setupNew').style.display = 'none';
+    document.getElementById('successBinId').textContent = '🗂 Bin ID: ' + binId;
+    document.getElementById('setupSuccess').style.display = 'block';
   } catch(e) {
     showErr(errEl, 'Could not connect. Check your Master Key and try again.');
   }
-  btn.disabled = false; btn.textContent = 'Connect & Save';
+  btn.disabled = false; btn.textContent = 'Create Bin & Connect';
+}
+
+async function doReconnect() {
+  const keyVal = document.getElementById('reconnectKey').value.trim();
+  const binVal = document.getElementById('reconnectBin').value.trim();
+  const errEl  = document.getElementById('reconnectErr');
+  const btn    = document.getElementById('reconnectBtn');
+  errEl.classList.remove('show');
+  if (!keyVal) { showErr(errEl, 'Please enter your Master Key.'); return; }
+  if (!binVal) { showErr(errEl, 'Please enter your Bin ID.'); return; }
+  btn.disabled = true; btn.textContent = 'Reconnecting…';
+  try {
+    await jbinRead(keyVal, binVal); // validates credentials
+    LS.set('cses_jkey', keyVal);
+    LS.set('cses_jbin', binVal);
+    document.getElementById('setupReconnect').style.display = 'none';
+    document.getElementById('successBinId').textContent = '🗂 Bin ID: ' + binVal;
+    document.getElementById('setupSuccess').style.display = 'block';
+  } catch(e) {
+    showErr(errEl, 'Could not connect. Check your credentials and try again.');
+  }
+  btn.disabled = false; btn.textContent = 'Reconnect';
 }
 
 /* ─────────── Cloud read/write ─────────── */
@@ -626,7 +670,10 @@ function resetAll() {
 
 /* ─────────── Settings modal ─────────── */
 function openSettings() {
-  document.getElementById('binIdDisplay').textContent = getBinId() || '(none)';
+  const bid = getBinId();
+  document.getElementById('binIdDisplay').textContent = bid || '(none)';
+  document.getElementById('binIdDisplay').title = bid ? 'Click to copy' : '';
+  document.getElementById('binIdDisplay').onclick = bid ? () => {navigator.clipboard.writeText(bid).catch(()=>{})} : null;
   document.getElementById('newKey').value = '';
   document.getElementById('settingsErr').classList.remove('show');
   document.getElementById('settingsOverlay').classList.remove('hidden');
@@ -653,6 +700,15 @@ async function saveSettings() {
   closeSettings();
   setSyncStatus('ok','synced');
 }
+function skipSetup() {
+  document.getElementById("setupOverlay").classList.add("hidden");
+  setSyncStatus("idle","local only — click to connect");
+  if (!solved || Object.keys(solved).length === 0) {
+    solved = LS.get("cses2_solved") || {};
+    notes  = LS.get("cses2_notes")  || {};
+    build(); applyFilter();
+  }
+}
 function disconnectBin() {
   if(!confirm('Disconnect the cloud bin? Your local progress stays, but cloud sync will be disabled until you reconnect.')) return;
   LS.del('cses_jkey'); LS.del('cses_jbin');
@@ -678,22 +734,28 @@ document.querySelectorAll('.fb').forEach(b=>{
 });
 
 // Enter key in setup modal
-document.getElementById('setupKey').addEventListener('keydown', e => {
-  if(e.key==='Enter') doSetup();
-});
+document.getElementById('setupKey').addEventListener('keydown', e => { if(e.key==='Enter') doSetup(); });
+document.getElementById('reconnectKey').addEventListener('keydown', e => { if(e.key==='Enter') doReconnect(); });
+document.getElementById('reconnectBin').addEventListener('keydown', e => { if(e.key==='Enter') doReconnect(); });
 
 if (getKey() && getBinId()) {
-  // Connected: load from local cache first for instant render, then fetch cloud
+  // Fully connected — load from local cache instantly, then sync from cloud
   solved = LS.get('cses2_solved') || {};
   notes  = LS.get('cses2_notes')  || {};
   build(); applyFilter();
   setSyncStatus('syncing','loading…');
   cloudLoad();
 } else {
-  // Not connected: show setup modal
+  // Not connected — show setup modal
   build(); applyFilter();
   setSyncStatus('idle','not connected');
-  document.getElementById('setupOverlay').classList.remove('hidden');
+  const overlay = document.getElementById('setupOverlay');
+  overlay.classList.remove('hidden');
+  // If we have a partial credential (e.g. after browser storage cleared),
+  // skip to the reconnect panel so user doesn't accidentally create a new bin
+  if (LS.get('cses_jbin') || LS.get('cses_jkey')) {
+    showReconnect();
+  }
 }
 </script>
 </body>
