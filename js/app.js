@@ -1,7 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc }
+import { getFirestore, doc, getDoc, setDoc, collection, query, orderBy, onSnapshot }
   from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { P, key } from './data.js';
 
@@ -14,18 +14,20 @@ const firebaseConfig = {
   messagingSenderId: "544860677196",
   appId: "1:544860677196:web:2e6b308298c711a7c2c0e9"
 };
-const fbApp  = initializeApp(firebaseConfig);
-const auth   = getAuth(fbApp);
-const db     = getFirestore(fbApp);
+const fbApp = initializeApp(firebaseConfig);
+const auth  = getAuth(fbApp);
+const db    = getFirestore(fbApp);
+const TOTAL = P.reduce((sum, sec) => sum + sec.p.length, 0);
 
 // ── State ────────────────────────────────────────────────────────────────────
 let solved = {};
 let notes  = {};
-let currentUser = null;
-let saveTimer   = null;
+let currentUser      = null;
+let saveTimer        = null;
+let leaderboardUnsub = null;
 let filter = 'all';
 
-// ── Firestore helpers ────────────────────────────────────────────────────────
+// ── Firestore: user data ─────────────────────────────────────────────────────
 function safeJSON(str) { try { return JSON.parse(str); } catch { return null; } }
 
 async function loadUserData(uid) {
@@ -36,7 +38,6 @@ async function loadUserData(uid) {
     solved = d.solved || {};
     notes  = d.notes  || {};
   } else {
-    // First login — migrate any existing localStorage data
     solved = safeJSON(localStorage.getItem('cses2_solved')) || {};
     notes  = safeJSON(localStorage.getItem('cses2_notes'))  || {};
     await setDoc(ref, { solved, notes });
@@ -48,6 +49,7 @@ async function persistUserData() {
   setSyncStatus('saving');
   try {
     await setDoc(doc(db, 'users', currentUser.uid), { solved, notes });
+    await updateLeaderboard();
     setSyncStatus('saved');
     setTimeout(() => setSyncStatus('idle'), 2000);
   } catch (e) {
@@ -65,31 +67,93 @@ function scheduleSave() {
 
 function setSyncStatus(s) {
   const el  = document.getElementById('sync-status');
-  const map = { idle:'', pending:'· · ·', saving:'⟳ Syncing', saved:'✓ Synced', error:'⚠ Offline' };
-  el.textContent  = map[s] ?? '';
+  const map = { idle: '', pending: '· · ·', saving: '⟳ Syncing', saved: '✓ Synced', error: '⚠ Offline' };
+  el.textContent   = map[s] ?? '';
   el.dataset.state = s;
 }
 
-// Flush before tab close
 window.addEventListener('beforeunload', () => {
   if (saveTimer && currentUser) { clearTimeout(saveTimer); persistUserData(); }
 });
 
+// ── Firestore: leaderboard ───────────────────────────────────────────────────
+async function updateLeaderboard() {
+  if (!currentUser) return;
+  const count = Object.values(solved).filter(Boolean).length;
+  try {
+    await setDoc(doc(db, 'leaderboard', currentUser.uid), {
+      displayName: currentUser.displayName || 'Anonymous',
+      photoURL:    currentUser.photoURL    || '',
+      solvedCount: count,
+      updatedAt:   new Date().toISOString()
+    });
+  } catch (e) {
+    console.error('Leaderboard update failed:', e);
+  }
+}
+
+function subscribeLeaderboard() {
+  const q = query(collection(db, 'leaderboard'), orderBy('solvedCount', 'desc'));
+  return onSnapshot(q, snap => {
+    renderLeaderboard(snap.docs.map(d => ({ uid: d.id, ...d.data() })));
+  }, err => console.error('Leaderboard error:', err));
+}
+
+function renderLeaderboard(users) {
+  const el = document.getElementById('leaderboard-list');
+  if (!users.length) {
+    el.innerHTML = '<div class="lb-empty">No users yet — start solving to appear here!</div>';
+    return;
+  }
+  const medals = ['🥇', '🥈', '🥉'];
+  el.innerHTML = users.map((u, i) => {
+    const rank  = i + 1;
+    const pct   = TOTAL ? Math.round(u.solvedCount / TOTAL * 100) : 0;
+    const isMe  = currentUser && u.uid === currentUser.uid;
+    const init  = (u.displayName || '?')[0].toUpperCase();
+    const avatar = u.photoURL
+      ? `<img class="lb-avatar" src="${u.photoURL}" alt="">`
+      : `<div class="lb-avatar lb-avatar-init">${init}</div>`;
+    const rankLabel = rank <= 3 ? `<span class="lb-medal">${medals[rank-1]}</span>` : `<span class="lb-rank-num">${rank}</span>`;
+    return `<div class="lb-row${isMe ? ' lb-me' : ''}">
+      <div class="lb-rank-cell">${rankLabel}</div>
+      ${avatar}
+      <div class="lb-info">
+        <div class="lb-name-row">
+          <span class="lb-name">${escHtml(u.displayName || 'Anonymous')}</span>
+          ${isMe ? '<span class="lb-you">you</span>' : ''}
+        </div>
+        <div class="lb-bar-outer"><div class="lb-bar-inner" style="width:${pct}%"></div></div>
+      </div>
+      <div class="lb-nums">
+        <span class="lb-count">${u.solvedCount}<span class="lb-total"> / ${TOTAL}</span></span>
+        <span class="lb-pct">${pct}%</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── View switching ───────────────────────────────────────────────────────────
+window.switchView = function(view) {
+  document.getElementById('problems-view').classList.toggle('hidden', view !== 'problems');
+  document.getElementById('leaderboard-view').classList.toggle('hidden', view !== 'leaderboard');
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.toggle('active', t.dataset.view === view));
+  if (view === 'leaderboard' && !leaderboardUnsub && currentUser) {
+    leaderboardUnsub = subscribeLeaderboard();
+  }
+};
+
 // ── Auth ─────────────────────────────────────────────────────────────────────
 document.getElementById('google-login-btn').addEventListener('click', async () => {
-  const btn = document.getElementById('google-login-btn');
-  btn.disabled = true;
+  const btn      = document.getElementById('google-login-btn');
+  const original = btn.innerHTML;
+  btn.disabled   = true;
   btn.textContent = 'Signing in…';
   try {
     await signInWithPopup(auth, new GoogleAuthProvider());
   } catch (e) {
     btn.disabled = false;
-    btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908C16.658 14.251 17.64 11.943 17.64 9.2z" fill="#4285F4"/>
-      <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-      <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-    </svg> Sign in with Google`;
+    btn.innerHTML = original;
     if (e.code !== 'auth/popup-closed-by-user') alert('Login failed: ' + e.message);
   }
 });
@@ -113,9 +177,12 @@ onAuthStateChanged(auth, async (user) => {
     if (user.photoURL) { av.src = user.photoURL; av.style.display = 'block'; }
     document.getElementById('user-name').textContent = user.displayName || user.email;
 
+    leaderboardUnsub = subscribeLeaderboard();
+    await updateLeaderboard();
     build();
     applyFilter();
   } else {
+    if (leaderboardUnsub) { leaderboardUnsub(); leaderboardUnsub = null; }
     document.getElementById('login-overlay').classList.remove('hidden');
     document.getElementById('user-info').classList.add('hidden');
     solved = {};
@@ -171,7 +238,9 @@ function applyFilter() {
 }
 
 function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function build() {
@@ -197,13 +266,13 @@ function build() {
           const k    = key(id, name);
           const href = id ? `https://cses.fi/problemset/task/${id}` : `https://cses.fi/problemset/list/`;
           const isNew = !id;
-          const sv   = !!solved[k];
-          const nt   = escHtml(notes[k] || '');
-          return `<div class="pr${sv ? ' solved' : ''}" data-key="${k}" data-id="${id || ''}" data-name="${name.toLowerCase()}" data-si="${si}">
+          const sv    = !!solved[k];
+          const nt    = escHtml(notes[k] || '');
+          return `<div class="pr${sv ? ' solved' : ''}" data-key="${k}" data-id="${id||''}" data-name="${name.toLowerCase()}" data-si="${si}">
             <div class="cc"><input type="checkbox"${sv ? ' checked' : ''} onchange="toggle('${k}',this,${si})"></div>
             <div class="nc">
               <a class="pl2" href="${href}" target="_blank" rel="noopener">
-                <span class="pid${isNew ? ' nw' : ''}">${isNew ? 'NEW' : '#' + id}</span>${name}<span class="pli">↗</span>
+                <span class="pid${isNew ? ' nw' : ''}">${isNew ? 'NEW' : '#'+id}</span>${name}<span class="pli">↗</span>
               </a>
             </div>
             <div class="ntc"><textarea class="ni" rows="1" placeholder="note…"
@@ -216,7 +285,7 @@ function build() {
   updateOverall();
 }
 
-// ── Global handlers (called from inline HTML) ────────────────────────────────
+// ── Global handlers ──────────────────────────────────────────────────────────
 window.toggle = function(k, cb, si) {
   solved[k] = cb.checked;
   scheduleSave();
@@ -241,7 +310,6 @@ window.sr = function(ta) {
   if (!ta.value) ta.style.height = '';
 };
 
-// ── Toolbar wiring ───────────────────────────────────────────────────────────
 document.getElementById('reset-btn').addEventListener('click', () => {
   if (!confirm('Reset ALL solved marks and notes? This cannot be undone.')) return;
   solved = {};
